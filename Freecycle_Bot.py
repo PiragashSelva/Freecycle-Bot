@@ -1,5 +1,5 @@
 ########################################################################################################
-# THIS BOT NOTIFIES THE USER WHEN NEW LISTINGS HAVE BEEN CREATED #
+# THIS BOT NOTIFIES THE USER WHEN NEW LISTINGS HAVE BEEN CREATED AND GIVES SOME INFO ABOUT THE LISTINGS#
 ########################################################################################################
 
 # importing discord-related dependencies
@@ -82,7 +82,6 @@ class MyClient(commands.Bot):
             password.send_keys(Keys.RETURN)
             ########################################################################################################
 
-            counter = 0  # initialising a counter/ resetting the counter
             parent = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.XPATH, "//*[@id='fc-data']"))
             )
@@ -99,23 +98,18 @@ class MyClient(commands.Bot):
                 if listing.get_attribute("data-id") in listings_dictionary:
                     pass  # if in the dictionary, do nothing
                 else:
-                    counter += 1
-                    listings_dictionary[listing.get_attribute("data-id")] = (
-                        1  # if it's not in the dictionary, add it to the dictionary and increase the counter
-                    )
-
-            if (
-                counter != 0 and first_loop != 1
-            ):  # if the counter is non-zero and it's not our first loop, we let the user know
-                if counter == 1:
-                    await channel.send("THERE'S 1 NEW LISTING!!!")
-                else:
-                    await channel.send("THERE ARE " + str(counter) + " NEW LISTINGS!!!")
+                    split = listing.text.split("\n")
+                    listings_dictionary[listing.get_attribute("data-id")] = [
+                        split[0] + " - " + split[5] + " - " + split[6]
+                    ]  # if it's not in the dictionary, add it to the dictionary and increase the counter
+                    if first_loop != 1:
+                        await channel.send(
+                            split[0] + " - " + split[5] + " - " + split[6] # sends notification in format: OFFER/WANTED - TITLE - SHORT DESCRIPTION
+                        )  # if we're not on our first loop, send info to discord channel
 
             first_loop = 0
             driver.quit()
             await asyncio.sleep(10)
-
 
 client = MyClient(command_prefix="!", intents=discord.Intents().all())
 client.run(TOKEN)
