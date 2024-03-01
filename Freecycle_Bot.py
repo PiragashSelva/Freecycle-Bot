@@ -24,6 +24,8 @@ LOGIN = os.getenv("LOGIN")
 PASSWORD = os.getenv("PASSWORD")
 TOKEN = os.getenv("TOKEN")
 
+# Define your keywords here
+keywords = ["TV", "bedframe", "drawers", "tool", "garden", "Carseat"]
 
 class MyClient(commands.Bot):
     def __init__(self, *args, **kwargs):
@@ -90,24 +92,16 @@ class MyClient(commands.Bot):
                 1:-1
             ]  # removing the first and last element as these are non-listing elements and therefore not of interest
 
-            for (
-                listing
-            ) in (
-                listings
-            ):  # for all the listings, check if it's already in the dictionary
+            for listing in listings:  # for all the listings, check if it's already in the dictionary
                 if listing.get_attribute("data-id") in listings_dictionary:
                     pass  # if in the dictionary, do nothing
                 else:
-                    split = listing.text.split("\n")
-                    listings_dictionary[listing.get_attribute("data-id")] = [
-                        split[0] + " - " + split[5] + " - " + split[6]
-                    ]  # if it's not in the dictionary, add it to the dictionary and increase the counter
-                    if first_loop != 1:
-                        await channel.send(
-                            split[0] + " - " + split[5] + " - " + split[6] # sends notification in format: OFFER/WANTED - TITLE - SHORT DESCRIPTION
-                        )  # if we're not on our first loop, send info to discord channel
+                    split = listing.text.split("\n") 
+                    listing_info = split[0] + " - " + split[5] + " - " + split[6]  # stores the listing info in format: OFFER/WANTED - TITLE - SHORT DESCRIPTION
+                    listings_dictionary[listing.get_attribute("data-id")] = [listing_info]  # if it's not in the dictionary, add it to the dictionary
+                    if any(keyword.lower() in listing_info.lower() for keyword in keywords): #if keyword present in listing
+                        await channel.send(listing_info) # sends listing info to discord channel
 
-            first_loop = 0
             driver.quit()
             await asyncio.sleep(10)
 
