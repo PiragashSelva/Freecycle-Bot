@@ -1,10 +1,6 @@
-########################################################################################################
-# THIS BOT NOTIFIES THE USER WHEN NEW LISTINGS HAVE BEEN CREATED AND GIVES SOME INFO ABOUT THE LISTINGS#
-########################################################################################################
-
 # importing discord-related dependencies
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 # importing selenium-related dependencies
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -22,10 +18,10 @@ from dotenv import load_dotenv
 load_dotenv()
 LOGIN = os.getenv("LOGIN")
 PASSWORD = os.getenv("PASSWORD")
-TOKEN = os.getenv("TOKEN")
+TOKEN = os.getenv("TOKEN")  
 
 # Define your keywords here
-keywords = ["TV", "bedframe", "drawers", "tool", "garden", "Carseat"]
+keywords = ["TV", "bedframe", "lamp", "tool", "garden", "table", "bookshelves"]
 
 class MyClient(commands.Bot):
     def __init__(self, *args, **kwargs):
@@ -34,20 +30,17 @@ class MyClient(commands.Bot):
     async def setup_hook(self) -> None:
         self.bg_task = self.loop.create_task(self.web_scraper())
 
-    async def on_ready(self):
+    async def on_ready(self): #prints statement to terminal when bot is connected and ready
         print("Success: Bot is connected!")
         print("-----------------------------------")
 
     async def web_scraper(self):
         await self.wait_until_ready()
-        channel = client.get_channel(1162765234281398345)
+        channel = client.get_channel(1162765234281398345) #UPDATE YOU CHANNEL HERE#
 
-        listings_dictionary = defaultdict(
-            int
-        )  # initialising a dictionary of listings we've already seen
-        first_loop = 1  # initialising a variable so we can tell if it's the first loop
+        listings_dictionary = defaultdict(int)  # initialising a dictionary of listings we've already seen
 
-        s = Service(r"C:\Program Files (x86)\chromedriver.exe")
+        s = Service(r"C:\Program Files (x86)\chromedriver.exe") #UPDATE THE LOCATION OF YOUR CHROMEDRIVER HERE#
         options = webdriver.ChromeOptions()
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--ignore-ssl-errors")
@@ -84,26 +77,46 @@ class MyClient(commands.Bot):
             password.send_keys(Keys.RETURN)
             ########################################################################################################
 
-            parent = WebDriverWait(driver, 5).until(
+            parent = WebDriverWait(driver, 5).until(   # navigating our way to the listings
                 EC.presence_of_element_located((By.XPATH, "//*[@id='fc-data']"))
-            )
+            ) 
             child = parent.find_elements(By.XPATH, "./child::*")
-            listings = child[
-                1:-1
-            ]  # removing the first and last element as these are non-listing elements and therefore not of interest
+            listings = child[1:-1]  # removing the first and last element as these are non-listing elements and therefore not of interest
 
             for listing in listings:  # for all the listings, check if it's already in the dictionary
                 if listing.get_attribute("data-id") in listings_dictionary:
                     pass  # if in the dictionary, do nothing
-                else:
+                else: # in not in the dictionary, execute the following
                     split = listing.text.split("\n") 
                     listing_info = split[0] + " - " + split[5] + " - " + split[6]  # stores the listing info in format: OFFER/WANTED - TITLE - SHORT DESCRIPTION
-                    listings_dictionary[listing.get_attribute("data-id")] = [listing_info]  # if it's not in the dictionary, add it to the dictionary
-                    if any(keyword.lower() in listing_info.lower() for keyword in keywords): #if keyword present in listing
-                        await channel.send(listing_info) # sends listing info to discord channel
+                    listings_dictionary[listing.get_attribute("data-id")] = [listing_info]  # adds it to the dictionary
+                    if any(keyword.lower() in listing_info.lower() for keyword in keywords): # if keywords are present in listing, execute the following
+                        
+                        reply_button = listing.find_element(By.CLASS_NAME, "btn-offer") #click reply button
+                        driver.execute_script("arguments[0].scrollIntoView(true);", reply_button)
+                        reply_button.click()
+
+                        index = listings.index(listing)
+                        
+                        textarea= driver.find_element(By.XPATH, "(//textarea[@name='body'])["+str(index+1)+"]") # type message
+                        driver.execute_script("arguments[0].scrollIntoView(true);", textarea)
+                        textarea.send_keys("Hi, I'm interested!") #EDIT YOUR MESSAGE HERE#
+                        
+                        send_button = driver.find_element(By.XPATH, "(//input[@value='Send'])["+str(index+1)+"]") # send message
+                        send_button.click()
+
+                        try: # if the confirmation box pops up, execute the following
+                            close_confirmation_button = WebDriverWait(driver, 5).until(
+                                EC.presence_of_element_located((By.XPATH, "(//button[@aria-label='Dismiss alert'])[1]"))
+                            )
+                            close_confirmation_button.click()
+                        except: # if not, continue
+                            pass
+
+                        await channel.send(listing_info) # sends listing info to discord channel                        
 
             driver.quit()
-            await asyncio.sleep(10)
+            await asyncio.sleep(10) 
 
 client = MyClient(command_prefix="!", intents=discord.Intents().all())
 client.run(TOKEN)
